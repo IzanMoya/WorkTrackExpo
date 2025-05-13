@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "439763098158",
+    "firebase_url": "https://worktrack-c18a2-default-rtdb.firebaseio.com",
+    "project_id": "worktrack-c18a2",
+    "storage_bucket": "worktrack-c18a2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:439763098158:android:c57158615708a32a6cddbf",
+        "android_client_info": {
+          "package_name": "com.izan.worktrack"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "439763098158-l005ouc02ghha23qfc78p16357rnoj64.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.izan.worktrack",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
+          "client_id": "439763098158-mj2r9pn0e7gbkfeqco0f3h8iemhd5t40.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBIe68ifoZvYYl_tHnZFUfyzg2XbU4CS8Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "439763098158-mj2r9pn0e7gbkfeqco0f3h8iemhd5t40.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "439763098158-dj500armn1uongiqr3oeqnhr2bghchp6.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.izan.worktrack"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
