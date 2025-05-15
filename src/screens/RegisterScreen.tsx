@@ -1,4 +1,5 @@
 // src/screens/RegisterScreen.tsx
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import React, { useState } from "react";
 import {
@@ -14,7 +15,7 @@ import { auth } from "../services/firebase";
 
 const RegisterScreen = ({ navigation }: any) => {
   const [nombre, setNombre] = useState("");
-    const [apellidos, setApellidos] = useState("");
+  const [apellidos, setApellidos] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rol, setRol] = useState("");
@@ -25,7 +26,6 @@ const RegisterScreen = ({ navigation }: any) => {
       return;
     }
 
-
     try {
       const userCredential = await createUserWithEmailAndPassword(
         auth,
@@ -33,6 +33,7 @@ const RegisterScreen = ({ navigation }: any) => {
         password
       );
       const idToken = await userCredential.user.getIdToken();
+      await AsyncStorage.setItem("token", idToken);
 
       await api.post(
         "/worktrack/usuarios/registro",

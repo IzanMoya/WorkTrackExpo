@@ -19,7 +19,7 @@ import { obtenerUsuarioId } from "../utils/getUsuarioId"; // Ajusta la ruta si e
 type RootStackParamList = {
   Login: undefined;
   Register: undefined;
-  Home: { token: string };
+  App: undefined;
   PasswordReset: undefined;
 };
 
@@ -67,10 +67,13 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
       }
 
       // 5. Ir a Home
-      navigation.navigate("Home", { token: idToken });
+      navigation.reset({
+        index: 0,
+        routes: [{ name: "App" }],
+      });
 
-      login?.()
-      console.log("Tus muertos")
+      login?.();
+      console.log("Hecho");
     } catch (error: any) {
       console.log("Login error:", error);
       Alert.alert("Error", error.message || "Error al iniciar sesión");

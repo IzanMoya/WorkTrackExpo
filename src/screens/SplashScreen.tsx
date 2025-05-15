@@ -1,26 +1,7 @@
-import { onAuthStateChanged } from "firebase/auth";
-import React, { useEffect } from "react";
+import React from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
-import { auth } from "../services/firebase";
 
-const SplashScreen = ({ navigation }: any) => {
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(
-      auth,
-      (user: typeof auth.currentUser) => {
-        if (user) {
-          user.getIdToken().then((token: string) => {
-            navigation.replace("Home", { token });
-          });
-        } else {
-          navigation.replace("Login");
-        }
-      }
-    );
-
-    return unsubscribe;
-  }, [navigation]);
-
+const SplashScreen = () => {
   return (
     <View style={styles.container}>
       <ActivityIndicator size="large" color="#000" />

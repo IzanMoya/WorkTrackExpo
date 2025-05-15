@@ -10,13 +10,17 @@ import {
   View,
 } from "react-native";
 import MapView, { Circle, Marker } from "react-native-maps";
-import { getFichajeEstado, registrarFichaje } from "../api/fichajesApi"; // debes crearlo tú
+import {
+  getFichajeEstado,
+  registrarFichajeEntrada,
+  registrarFichajeSalida,
+} from "../api/fichajesApi";
 
 const HomeScreen = ({ navigation }: any) => {
   const [location, setLocation] =
     useState<Location.LocationObjectCoords | null>(null);
   const [fichando, setFichando] = useState(false);
-  const [estado, setEstado] = useState("Pendiente");
+  const [estado, setEstado] = useState("pendiente");
 
   // Ubicación del lugar de trabajo (mock o de tu base de datos)
   const ubicacionTrabajo = {
@@ -42,11 +46,10 @@ const HomeScreen = ({ navigation }: any) => {
     })();
   }, []);
 
-  const handleFicharSalida = async () => {
+  const handleFichar = async () => {
     setFichando(true);
-    const usuarioId = await AsyncStorage.getItem("usuarioId");
-    console.log(usuarioId)
 
+    const usuarioId = await AsyncStorage.getItem("usuarioId");
     if (!usuarioId || !location) {
       Alert.alert("Error", "Faltan datos para registrar el fichaje");
       setFichando(false);
@@ -54,15 +57,34 @@ const HomeScreen = ({ navigation }: any) => {
     }
 
     try {
-      await registrarFichaje(
-        parseInt(usuarioId), // Enviado como número
-        location.latitude,
-        location.longitude,
-        new Date().toISOString()
-      );
-      setEstado("hecho");
-      Alert.alert("Fichaje exitoso", "Has fichado la salida correctamente.");
-    } catch (e) {
+      if (estado === "pendiente") {
+        // Fichaje de entrada
+        const nuevoFichaje = await registrarFichajeEntrada(
+          parseInt(usuarioId),
+          location.latitude,
+          location.longitude
+        );
+
+        await AsyncStorage.setItem("fichajeId", nuevoFichaje.id.toString());
+        setEstado("hecho");
+        Alert.alert("Fichaje de entrada registrado");
+      } else {
+        // Fichaje de salida
+        const fichajeId = await AsyncStorage.getItem("fichajeId");
+        if (!fichajeId) throw new Error("No hay fichaje activo");
+
+        await registrarFichajeSalida(
+          parseInt(fichajeId),
+          location.latitude,
+          location.longitude
+        );
+
+        await AsyncStorage.removeItem("fichajeId");
+        setEstado("pendiente");
+        Alert.alert("Fichaje de salida registrado");
+      }
+    } catch (error) {
+      console.error(error);
       Alert.alert("Error", "No se pudo registrar el fichaje");
     } finally {
       setFichando(false);
@@ -72,54 +94,60 @@ const HomeScreen = ({ navigation }: any) => {
   return (
     <View style={styles.container}>
       {location && (
-        <MapView
-          style={styles.map}
-          initialRegion={{
-            latitude: location.latitude,
-            longitude: location.longitude,
-            latitudeDelta: 0.005,
-            longitudeDelta: 0.005,
-          }}
-          showsUserLocation
-        >
-          <Marker
-            coordinate={{
-              latitude: ubicacionTrabajo.latitude,
-              longitude: ubicacionTrabajo.longitude,
+        <View style={styles.mapContainer}>
+          <MapView
+            style={styles.map}
+            initialRegion={{
+              latitude: location.latitude,
+              longitude: location.longitude,
+              latitudeDelta: 0.005,
+              longitudeDelta: 0.005,
             }}
-            title="Puesto de trabajo"
-          />
-          <Circle
-            center={{
-              latitude: ubicacionTrabajo.latitude,
-              longitude: ubicacionTrabajo.longitude,
-            }}
-            radius={ubicacionTrabajo.radio}
-            strokeColor="rgba(0,0,255,0.5)"
-            fillColor="rgba(0,0,255,0.1)"
-          />
-        </MapView>
+            showsUserLocation
+          >
+            <Marker
+              coordinate={{
+                latitude: ubicacionTrabajo.latitude,
+                longitude: ubicacionTrabajo.longitude,
+              }}
+              title="Puesto de trabajo"
+            />
+            <Circle
+              center={{
+                latitude: ubicacionTrabajo.latitude,
+                longitude: ubicacionTrabajo.longitude,
+              }}
+              radius={ubicacionTrabajo.radio}
+              strokeColor="rgba(0,0,255,0.5)"
+              fillColor="rgba(0,0,255,0.1)"
+            />
+          </MapView>
+        </View>
       )}
 
       <View style={styles.bottomContainer}>
         <TouchableOpacity
           style={[styles.button, fichando && { opacity: 0.5 }]}
-          onPress={handleFicharSalida}
+          onPress={handleFichar}
           disabled={fichando}
         >
           <Text style={styles.buttonText}>
-            {fichando ? "Fichando..." : "Fichar Salida"}
+            {fichando
+              ? "Fichando..."
+              : estado === "pendiente"
+              ? "Fichar Entrada"
+              : "Fichar Salida"}
           </Text>
         </TouchableOpacity>
 
         <Text style={styles.estadoLabel}>Estado Actual Fichaje</Text>
         <Text
           style={{
-            color: estado === "Hecho" ? "green" : "red",
+            color: estado === "hecho" ? "green" : "red",
             fontWeight: "bold",
           }}
         >
-          {estado}
+          {estado === "hecho" ? "Hecho" : "Pendiente"}
         </Text>
       </View>
     </View>
@@ -153,6 +181,14 @@ const styles = StyleSheet.create({
   estadoLabel: {
     marginBottom: 5,
     fontSize: 16,
+  },
+  mapContainer: {
+    margin: 16,
+    borderRadius: 16,
+    overflow: "hidden",
+    height: "45%", // Puedes ajustar esta altura
+    borderWidth: 1,
+    borderColor: "#ccc",
   },
 });
 
