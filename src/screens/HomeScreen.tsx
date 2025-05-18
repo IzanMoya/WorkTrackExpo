@@ -40,7 +40,16 @@ const HomeScreen = ({ navigation }: any) => {
       const loc = await Location.getCurrentPositionAsync({});
       setLocation(loc.coords);
 
-      const usuarioId = 1; // ⚠️ Sustituye por ID real
+      const usuarioIdStr = await AsyncStorage.getItem("usuarioId");
+
+      console.log("📦 ID recuperado en HomeScreen:", usuarioIdStr);
+
+      if (!usuarioIdStr) {
+        Alert.alert("Error", "No se encontró el ID del usuario");
+        return;
+      }
+
+      const usuarioId = parseInt(usuarioIdStr, 10);
       const estado = await getFichajeEstado(usuarioId);
       setEstado(estado); // "hecho" o "pendiente"
     })();
@@ -49,18 +58,23 @@ const HomeScreen = ({ navigation }: any) => {
   const handleFichar = async () => {
     setFichando(true);
 
-    const usuarioId = await AsyncStorage.getItem("usuarioId");
-    if (!usuarioId || !location) {
-      Alert.alert("Error", "Faltan datos para registrar el fichaje");
-      setFichando(false);
-      return;
-    }
-
     try {
+      const usuarioIdStr = await AsyncStorage.getItem("usuarioId");
+
+      console.log("📦 ID recuperado de AsyncStorage:", usuarioIdStr); // ✅ CONSOLE.LOG
+
+      if (!usuarioIdStr || !location) {
+        Alert.alert("Error", "Faltan datos para registrar el fichaje");
+        setFichando(false);
+        return;
+      }
+
+      const usuarioId = parseInt(usuarioIdStr, 10);
+
       if (estado === "pendiente") {
         // Fichaje de entrada
         const nuevoFichaje = await registrarFichajeEntrada(
-          parseInt(usuarioId),
+          usuarioId,
           location.latitude,
           location.longitude
         );
@@ -71,6 +85,9 @@ const HomeScreen = ({ navigation }: any) => {
       } else {
         // Fichaje de salida
         const fichajeId = await AsyncStorage.getItem("fichajeId");
+
+        console.log("🔄 Fichaje activo (id):", fichajeId); // opcional
+
         if (!fichajeId) throw new Error("No hay fichaje activo");
 
         await registrarFichajeSalida(
@@ -84,7 +101,7 @@ const HomeScreen = ({ navigation }: any) => {
         Alert.alert("Fichaje de salida registrado");
       }
     } catch (error) {
-      console.error(error);
+      console.error("❌ Error al fichar:", error);
       Alert.alert("Error", "No se pudo registrar el fichaje");
     } finally {
       setFichando(false);

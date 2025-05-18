@@ -51,7 +51,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
       // 2. Guardar token en almacenamiento local
       await AsyncStorage.setItem("token", idToken);
 
-      // 3. Validar el token en el backend
+      // 3. Validar token en backend
       await api.post(
         "/auth/login",
         {},
@@ -60,22 +60,33 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
         }
       );
 
-      // 4. Obtener ID de usuario y guardarlo
+      // 4. Obtener ID del usuario desde backend
       const usuarioId = await obtenerUsuarioId(email);
-      if (usuarioId) {
-        await AsyncStorage.setItem("usuarioId", usuarioId.toString());
+
+      if (!usuarioId) {
+        Alert.alert("Error", "No se pudo obtener el ID del usuario.");
+        return;
       }
 
-      // 5. Ir a Home
-      navigation.reset({
-        index: 0,
-        routes: [{ name: "App" }],
-      });
+      console.log("✅ ID usuario backend:", usuarioId);
 
-      login?.();
-      console.log("Hecho");
+      // Guardamos y verificamos
+      await AsyncStorage.setItem("usuarioId", usuarioId.toString());
+      const check = await AsyncStorage.getItem("usuarioId");
+      console.log("📦 Verificado en AsyncStorage:", check);
+
+      // 5. Confirmamos login y navegamos
+      login?.(); // actualiza el estado global
+      setTimeout(() => {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: "App" }],
+        });
+      }, 300); // ⏱️ pequeño delay para asegurar que AsyncStorage se completa
+
+      console.log("✅ Login completo");
     } catch (error: any) {
-      console.log("Login error:", error);
+      console.error("Login error:", error);
       Alert.alert("Error", error.message || "Error al iniciar sesión");
     }
   };
