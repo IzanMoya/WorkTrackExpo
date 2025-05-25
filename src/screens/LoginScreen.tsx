@@ -123,10 +123,13 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity onPress={() => navigation.navigate("PasswordReset")}>
+      <TouchableOpacity
+        onPress={() => navigation.navigate("PasswordReset")}
+        style={{ marginBottom: 25 }} // MÁS espacio antes del botón
+      >
         <Text style={styles.forgotText}>¿Contraseña olvidada?</Text>
       </TouchableOpacity>
-
+      
       <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
         <Text style={styles.loginButtonText}>Iniciar Sesión</Text>
       </TouchableOpacity>
@@ -135,18 +138,6 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
         <Text style={styles.footerText}>¿No tienes cuenta?</Text>
         <TouchableOpacity onPress={() => navigation.navigate("Register")}>
           <Text style={styles.registerText}> Regístrate</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={{ marginTop: 20 }}
-          onPress={async () => {
-            await AsyncStorage.clear();
-            console.log("🧹 AsyncStorage limpiado");
-            Alert.alert("Limpieza completada", "Se ha borrado AsyncStorage");
-          }}
-        >
-          <Text style={{ color: "red", textAlign: "center" }}>
-            Borrar almacenamiento
-          </Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -178,8 +169,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderBottomWidth: 1,
     borderBottomColor: "#ccc",
-    marginBottom: 10,
+    marginBottom: 25, // MÁS espacio entre contraseña y "¿Contraseña olvidada?"
   },
+
   forgotPassword: { alignSelf: "flex-end", marginBottom: 30 },
   forgotText: { color: "#aaa" },
   loginButton: {

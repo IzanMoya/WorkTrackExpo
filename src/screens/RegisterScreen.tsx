@@ -1,5 +1,7 @@
 // src/screens/RegisterScreen.tsx
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Picker } from "@react-native-picker/picker";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import React, { useState } from "react";
 import {
@@ -18,6 +20,7 @@ const RegisterScreen = ({ navigation }: any) => {
   const [apellidos, setApellidos] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [rol, setRol] = useState("");
 
   const handleRegister = async () => {
@@ -82,19 +85,33 @@ const RegisterScreen = ({ navigation }: any) => {
         value={email}
         onChangeText={setEmail}
       />
-      <TextInput
-        style={styles.input}
-        placeholder="Contraseña"
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Rol (Empleado/admin)"
-        value={rol}
-        onChangeText={setRol}
-      />
+      <View style={styles.passwordContainer}>
+        <TextInput
+          style={[styles.input, { flex: 1 }]}
+          placeholder="Contraseña"
+          secureTextEntry={!showPassword}
+          value={password}
+          onChangeText={setPassword}
+        />
+        <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+          <MaterialCommunityIcons
+            name={showPassword ? "eye-off-outline" : "eye-outline"}
+            size={20}
+            color="#999"
+          />
+        </TouchableOpacity>
+      </View>
+      <View style={styles.pickerContainer}>
+        <Picker
+          selectedValue={rol}
+          onValueChange={(itemValue) => setRol(itemValue)}
+          style={styles.picker}
+        >
+          <Picker.Item label="Rol..." value="" enabled={false} />
+          <Picker.Item label="Empleado" value="empleado" />
+          <Picker.Item label="Admin" value="admin" />
+        </Picker>
+      </View>
 
       <TouchableOpacity style={styles.button} onPress={handleRegister}>
         <Text style={styles.buttonText}>Registrarte</Text>
@@ -132,6 +149,22 @@ const styles = StyleSheet.create({
   buttonText: {
     color: "#fff",
     fontWeight: "bold",
+  },
+  pickerContainer: {
+    borderBottomWidth: 1,
+    borderBottomColor: "#ccc",
+    marginBottom: 20,
+  },
+  picker: {
+    height: 50,
+    width: "100%",
+  },
+  passwordContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderBottomWidth: 1,
+    borderBottomColor: "#ccc",
+    marginBottom: 20,
   },
 });
 

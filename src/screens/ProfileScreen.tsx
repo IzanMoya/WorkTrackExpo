@@ -23,12 +23,24 @@ export default function ProfileScreen() {
   const cargarDatosUsuario = async () => {
     try {
       const id = await AsyncStorage.getItem("usuarioId");
-      if (!id) throw new Error("ID no encontrado");
+      const token = await AsyncStorage.getItem("token");
 
-      const res = await api.get(`/worktrack/usuarios/${id}`);
+      if (!id || !token) {
+        throw new Error("Datos no encontrados");
+      }
+
+      console.log("📦 Token que se va a enviar:", token); // 👈 Añade este log
+
+      const res = await api.get(`/worktrack/usuarios/${id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      console.log("📦 Usuario cargado:", res.data);
       setUser(res.data);
     } catch (error) {
-      console.error("Error al cargar datos:", error);
+      console.error("❌ Error al cargar datos:", error);
       Alert.alert("Error", "No se pudieron cargar los datos del usuario.");
     }
   };
@@ -50,7 +62,7 @@ export default function ProfileScreen() {
     cargarDatosUsuario();
   }, []);
 
-  return (
+  return(
     <View style={styles.container}>
       <TouchableOpacity onPress={seleccionarImagen}>
         <Image
@@ -62,11 +74,14 @@ export default function ProfileScreen() {
           style={styles.avatar}
         />
       </TouchableOpacity>
-      <Text style={styles.name}>
-        {user.nombre} {user.apellidos}
-      </Text>
-      <Text style={styles.email}>{user.email}</Text>
-      <Text style={styles.rol}>Rol: {user.rol}</Text>
+
+      <View style={styles.infoContainer}>
+        <Text style={styles.name}>
+          {user.nombre} {user.apellidos}
+        </Text>
+        <Text style={styles.email}>{user.email}</Text>
+        <Text style={styles.rol}>Rol: {user.rol}</Text>
+      </View>
     </View>
   );
 }
@@ -75,29 +90,34 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "flex-start", // <-- para subir todo arriba
     backgroundColor: "#fff",
     padding: 20,
+    paddingTop: 60, // <- espacio desde el top
   },
   avatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
     backgroundColor: "#ccc",
-    marginBottom: 20,
+    marginBottom: 30,
+  },
+  infoContainer: {
+    alignItems: "center",
   },
   name: {
     fontSize: 22,
     fontWeight: "bold",
+    marginBottom: 5,
   },
   email: {
     fontSize: 16,
     color: "#888",
-    marginTop: 5,
+    marginBottom: 5,
   },
   rol: {
     fontSize: 16,
     color: "#000",
-    marginTop: 10,
+    marginTop: 5,
   },
 });

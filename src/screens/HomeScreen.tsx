@@ -1,6 +1,8 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useFocusEffect } from "@react-navigation/native";
 import * as Location from "expo-location";
-import React, { useEffect, useState } from "react";
+import haversine from "haversine-distance";
+import React, { useCallback, useState } from "react";
 import {
   Alert,
   Dimensions,
@@ -9,7 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import MapView, { Circle, Marker } from "react-native-maps";
+import MapView from "react-native-maps";
 import {
   getFichajeEstado,
   registrarFichajeEntrada,
@@ -22,38 +24,32 @@ const HomeScreen = ({ navigation }: any) => {
   const [fichando, setFichando] = useState(false);
   const [estado, setEstado] = useState("pendiente");
 
-  // Ubicación del lugar de trabajo (mock o de tu base de datos)
-  const ubicacionTrabajo = {
-    latitude: 40.4168,
-    longitude: -3.7038,
-    radio: 100,
-  };
+  useFocusEffect(
+    useCallback(() => {
+      (async () => {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== "granted") {
+          Alert.alert("Permiso denegado", "Activa la ubicación para continuar");
+          return;
+        }
 
-  useEffect(() => {
-    (async () => {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert("Permiso denegado", "Activa la ubicación para continuar");
-        return;
-      }
+        const loc = await Location.getCurrentPositionAsync({});
+        setLocation(loc.coords);
 
-      const loc = await Location.getCurrentPositionAsync({});
-      setLocation(loc.coords);
+        const usuarioIdStr = await AsyncStorage.getItem("usuarioId");
+        console.log("📦 ID recuperado en HomeScreen:", usuarioIdStr);
 
-      const usuarioIdStr = await AsyncStorage.getItem("usuarioId");
+        if (!usuarioIdStr) {
+          Alert.alert("Error", "No se encontró el ID del usuario");
+          return;
+        }
 
-      console.log("📦 ID recuperado en HomeScreen:", usuarioIdStr);
-
-      if (!usuarioIdStr) {
-        Alert.alert("Error", "No se encontró el ID del usuario");
-        return;
-      }
-
-      const usuarioId = parseInt(usuarioIdStr, 10);
-      const estado = await getFichajeEstado(usuarioId);
-      setEstado(estado); // "hecho" o "pendiente"
-    })();
-  }, []);
+        const usuarioId = parseInt(usuarioIdStr, 10);
+        const estado = await getFichajeEstado(usuarioId);
+        setEstado(estado);
+      })();
+    }, [])
+  );
 
   const handleFichar = async () => {
     setFichando(true);
@@ -72,7 +68,12 @@ const HomeScreen = ({ navigation }: any) => {
       const usuarioId = parseInt(usuarioIdStr, 10);
 
       if (estado === "pendiente") {
-        // Fichaje de entrada
+        // 🟢 Fichaje de entrada
+
+        // Guardar ubicación real como referencia para salida
+        await AsyncStorage.setItem("fichajeLat", location.latitude.toString());
+        await AsyncStorage.setItem("fichajeLng", location.longitude.toString());
+
         const nuevoFichaje = await registrarFichajeEntrada(
           usuarioId,
           location.latitude,
@@ -83,12 +84,38 @@ const HomeScreen = ({ navigation }: any) => {
         setEstado("hecho");
         Alert.alert("Fichaje de entrada registrado");
       } else {
-        // Fichaje de salida
+        // 🔴 Fichaje de salida
+
         const fichajeId = await AsyncStorage.getItem("fichajeId");
+        const fichajeLatStr = await AsyncStorage.getItem("fichajeLat");
+        const fichajeLngStr = await AsyncStorage.getItem("fichajeLng");
 
-        console.log("🔄 Fichaje activo (id):", fichajeId); // opcional
+        if (!fichajeId || !fichajeLatStr || !fichajeLngStr) {
+          throw new Error("Datos del fichaje anterior no encontrados");
+        }
 
-        if (!fichajeId) throw new Error("No hay fichaje activo");
+        const entradaLocation = {
+          lat: parseFloat(fichajeLatStr),
+          lng: parseFloat(fichajeLngStr),
+        };
+
+        const salidaLocation = {
+          lat: location.latitude,
+          lng: location.longitude,
+        };
+
+        const distanciaSalida = haversine(salidaLocation, entradaLocation);
+
+        if (distanciaSalida > 100) {
+          Alert.alert(
+            "Fuera de zona",
+            `Estás a ${Math.round(
+              distanciaSalida
+            )} metros del punto donde fichaste entrada. Debes estar dentro de 100 metros para fichar salida.`
+          );
+          setFichando(false);
+          return;
+        }
 
         await registrarFichajeSalida(
           parseInt(fichajeId),
@@ -97,6 +124,9 @@ const HomeScreen = ({ navigation }: any) => {
         );
 
         await AsyncStorage.removeItem("fichajeId");
+        await AsyncStorage.removeItem("fichajeLat");
+        await AsyncStorage.removeItem("fichajeLng");
+
         setEstado("pendiente");
         Alert.alert("Fichaje de salida registrado");
       }
@@ -122,22 +152,7 @@ const HomeScreen = ({ navigation }: any) => {
             }}
             showsUserLocation
           >
-            <Marker
-              coordinate={{
-                latitude: ubicacionTrabajo.latitude,
-                longitude: ubicacionTrabajo.longitude,
-              }}
-              title="Puesto de trabajo"
-            />
-            <Circle
-              center={{
-                latitude: ubicacionTrabajo.latitude,
-                longitude: ubicacionTrabajo.longitude,
-              }}
-              radius={ubicacionTrabajo.radio}
-              strokeColor="rgba(0,0,255,0.5)"
-              fillColor="rgba(0,0,255,0.1)"
-            />
+            
           </MapView>
         </View>
       )}
@@ -164,20 +179,29 @@ const HomeScreen = ({ navigation }: any) => {
             fontWeight: "bold",
           }}
         >
-          {estado === "hecho" ? "Hecho" : "Pendiente"}
+          {estado}
         </Text>
       </View>
     </View>
   );
-};
+}; // <--- asegúrate de cerrar aquí el componente antes de definir estilos
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: "#f4f4f4",
+  },
+  mapContainer: {
+    margin: 16,
+    borderRadius: 16,
+    overflow: "hidden",
+    height: Dimensions.get("window").height * 0.45,
+    borderWidth: 1,
+    borderColor: "#ccc",
   },
   map: {
-    width: Dimensions.get("window").width,
-    height: Dimensions.get("window").height * 0.6,
+    width: "100%",
+    height: "100%",
   },
   bottomContainer: {
     padding: 20,
@@ -198,14 +222,6 @@ const styles = StyleSheet.create({
   estadoLabel: {
     marginBottom: 5,
     fontSize: 16,
-  },
-  mapContainer: {
-    margin: 16,
-    borderRadius: 16,
-    overflow: "hidden",
-    height: "45%", // Puedes ajustar esta altura
-    borderWidth: 1,
-    borderColor: "#ccc",
   },
 });
 
