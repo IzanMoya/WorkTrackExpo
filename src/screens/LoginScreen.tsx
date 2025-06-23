@@ -1,20 +1,23 @@
-import { MaterialCommunityIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { RouteProp } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import React, { useState } from "react";
 import {
   Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import api from "../api/axiosConfig";
 import { auth } from "../services/firebase"; // ← compat
 import { useAuth } from "../utils/AuthContext";
-import { obtenerUsuarioId } from "../utils/getUsuarioId"; // Ajusta la ruta si está en otra carpeta
 
 type RootStackParamList = {
   Login: undefined;
@@ -61,12 +64,24 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
       );
 
       // 4. Obtener ID del usuario desde backend
-      const usuarioId = await obtenerUsuarioId(email);
+      const usuarioResponse = await api.get(
+        `/worktrack/usuarios/email/${email}`,
+        {
+          headers: { Authorization: `Bearer ${idToken}` },
+        }
+      );
 
-      if (!usuarioId) {
-        Alert.alert("Error", "No se pudo obtener el ID del usuario.");
+      const usuarioData = usuarioResponse.data;
+      const usuarioId = usuarioData.id;
+      const empresaId = usuarioData.empresaId;
+
+      if (!usuarioId || !empresaId) {
+        Alert.alert("Error", "No se pudo obtener la empresa o el usuario.");
         return;
       }
+
+      await AsyncStorage.setItem("usuarioId", usuarioId.toString());
+      await AsyncStorage.setItem("empresaId", empresaId.toString());
 
       console.log("✅ ID usuario backend:", usuarioId);
 
@@ -92,78 +107,95 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>¡Bienvenido!</Text>
-
-      <Text style={styles.label}>Email</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Tu correo"
-        value={email}
-        onChangeText={setEmail}
-        keyboardType="email-address"
-        autoCapitalize="none"
-      />
-
-      <Text style={styles.label}>Contraseña</Text>
-      <View style={styles.passwordContainer}>
-        <TextInput
-          style={[styles.input, { flex: 1 }]}
-          placeholder="Tu contraseña"
-          secureTextEntry={!showPassword}
-          value={password}
-          onChangeText={setPassword}
-        />
-        <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-          <MaterialCommunityIcons
-            name={showPassword ? "eye-off-outline" : "eye-outline"}
-            size={20}
-            color="#999"
-          />
-        </TouchableOpacity>
-      </View>
-
-      <TouchableOpacity
-        onPress={() => navigation.navigate("PasswordReset")}
-        style={{ marginBottom: 25 }} // MÁS espacio antes del botón
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.forgotText}>¿Contraseña olvidada?</Text>
-      </TouchableOpacity>
-      
-      <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-        <Text style={styles.loginButtonText}>Iniciar Sesión</Text>
-      </TouchableOpacity>
+        <Text style={styles.title}>¡Bienvenido!</Text>
 
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>¿No tienes cuenta?</Text>
-        <TouchableOpacity onPress={() => navigation.navigate("Register")}>
-          <Text style={styles.registerText}> Regístrate</Text>
+        <Text style={styles.label}>Email</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Tu correo"
+          placeholderTextColor="#aaa"
+          autoCapitalize="none"
+          keyboardType="email-address"
+          value={email}
+          onChangeText={setEmail}
+        />
+
+        <Text style={styles.label}>Contraseña</Text>
+        <View style={styles.passwordContainer}>
+          <TextInput
+            style={[styles.input, { flex: 1 }]}
+            placeholder="Tu contraseña"
+            secureTextEntry={!showPassword}
+            placeholderTextColor="#aaa"
+            value={password}
+            onChangeText={setPassword}
+          />
+          <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+            <MaterialCommunityIcons
+              name={showPassword ? "eye-off-outline" : "eye-outline"}
+              size={20}
+              color="#999"
+            />
+          </TouchableOpacity>
+        </View>
+        <TouchableOpacity
+          onPress={() => navigation.navigate("PasswordReset")}
+          style={{ marginBottom: 25 }} // MÁS espacio antes del botón
+        >
+          <Text style={styles.forgotPassword}>¿Contraseña olvidada?</Text>
         </TouchableOpacity>
-      </View>
-    </View>
+
+        <TouchableOpacity style={styles.button} onPress={handleLogin}>
+          <Text style={styles.buttonText}>Iniciar Sesión</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={() => navigation.navigate("Register")}>
+          <Text style={styles.registerLink}>
+            ¿No tienes cuenta?{" "}
+            <Text style={{ fontWeight: "bold" }}>Regístrate</Text>
+          </Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    flexGrow: 1,
     justifyContent: "center",
-    padding: 30,
+    padding: 24,
     backgroundColor: "#fff",
   },
+
   title: {
     fontSize: 28,
     fontWeight: "bold",
+    marginBottom: 30,
     textAlign: "center",
-    marginBottom: 40,
   },
-  label: { fontSize: 14, color: "#000", marginBottom: 5 },
+  label: {
+    fontSize: 16,
+    marginBottom: 6,
+    color: "#000",
+  },
   input: {
     borderBottomWidth: 1,
     borderBottomColor: "#ccc",
     marginBottom: 20,
-    paddingVertical: 5,
+    paddingVertical: 8,
+    fontSize: 16,
+    color: "#000",
   },
+
   passwordContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -181,6 +213,24 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 20,
   },
+  button: {
+    backgroundColor: "#000",
+    padding: 15,
+    borderRadius: 20,
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  buttonText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 16,
+  },
+  registerLink: {
+    textAlign: "center",
+    fontSize: 14,
+    color: "#555",
+  },
+
   loginButtonText: { color: "#fff", fontWeight: "bold" },
   footer: { flexDirection: "row", justifyContent: "center" },
   footerText: { color: "#888" },

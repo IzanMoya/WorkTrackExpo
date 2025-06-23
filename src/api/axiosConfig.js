@@ -2,8 +2,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "http://192.168.1.112:8080",
-  timeout: 10000,
+  baseURL: "https://worktrack-backend-2.onrender.com",
+  timeout: 120000,
   headers: {
     "Content-Type": "application/json",
   },
