@@ -6,10 +6,10 @@ import { navigationRef } from "./src/utils/RootNavigator";
 
 export default function App() {
   return (
-    <NavigationContainer ref={navigationRef}>
-      <AuthProvider>
+    <AuthProvider>
+      <NavigationContainer ref={navigationRef}>
         <AppNavigator />
-      </AuthProvider>
-    </NavigationContainer>
+      </NavigationContainer>
+    </AuthProvider>
   );
 }

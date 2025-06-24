@@ -14,6 +14,7 @@ type Props = { children: any };
 type AuthType = {
   login?: () => void;
   logout: () => void;
+  forceLogout: () => void; // ✅ nuevo
   isAuthenticated: boolean;
   loading: boolean;
 };
@@ -23,6 +24,7 @@ const AuthContext = createContext<AuthType>({
   loading: true,
   login: () => {},
   logout: () => {},
+  forceLogout: () => {}, // ✅ nuevo
 });
 
 export const AuthProvider: FC<Props> = ({ children }) => {
@@ -30,7 +32,7 @@ export const AuthProvider: FC<Props> = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-const unsubscribe = onAuthStateChanged(auth, async (user: firebase.User | null) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user: firebase.User | null) => {
       if (user) {
         const token = await user.getIdToken();
         await AsyncStorage.setItem("token", token);
@@ -46,13 +48,26 @@ const unsubscribe = onAuthStateChanged(auth, async (user: firebase.User | null) 
   }, []);
 
   const login = () => setIsAuthenticated(true);
+
   const logout = () => {
     setIsAuthenticated(false);
     AsyncStorage.removeItem("token");
   };
 
+  const forceLogout = () => {
+    setIsAuthenticated(false);
+  };
+
   return (
-    <AuthContext.Provider value={{ isAuthenticated, loading, login, logout }}>
+    <AuthContext.Provider
+      value={{
+        isAuthenticated,
+        loading,
+        login,
+        logout,
+        forceLogout, // ✅ nuevo
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

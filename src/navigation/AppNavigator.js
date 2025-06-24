@@ -23,12 +23,15 @@ export default function AppNavigator() {
   return (
     <RootStack.Navigator screenOptions={{ headerShown: false }}>
       {isAuthenticated ? (
-        <RootStack.Screen name="AppStack" component={DrawerNavigator} />
+        <RootStack.Screen name="App" component={DrawerNavigator} />
       ) : (
         <>
           <RootStack.Screen name="Login" component={LoginScreen} />
           <RootStack.Screen name="Register" component={RegisterScreen} />
-          <RootStack.Screen name="PasswordReset" component={PasswordResetScreen} />
+          <RootStack.Screen
+            name="PasswordReset"
+            component={PasswordResetScreen}
+          />
         </>
       )}
     </RootStack.Navigator>
