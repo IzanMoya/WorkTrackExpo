@@ -80,6 +80,14 @@ const HistorialScreen = ({ navigation }: any) => {
     const salida = item.fechaFin
       ? moment(item.fechaFin).format("DD/MM/YYYY HH:mm")
       : "Sin salida";
+    const descansoInicio = item.fechaInicioDescanso
+      ? moment(item.fechaInicioDescanso).format("DD/MM/YYYY HH:mm")
+      : "Sin descanso";
+
+    const descansoFin = item.fechaFinDescanso
+      ? moment(item.fechaFinDescanso).format("DD/MM/YYYY HH:mm")
+      : "Sin fin de descanso";
+
     const latInicio = item.latitudInicio?.toFixed(4) ?? "N/A";
     const lonInicio = item.longitudInicio?.toFixed(4) ?? "N/A";
     const latFin = item.latitudFin?.toFixed(4) ?? "N/A";
@@ -92,6 +100,8 @@ const HistorialScreen = ({ navigation }: any) => {
         >{`${item.usuarios.nombre} ${item.usuarios.apellidos}`}</Text>
         <Text>📅 Entrada: {entrada}</Text>
         <Text>📅 Salida: {salida}</Text>
+        <Text>⏸ Inicio descanso: {descansoInicio}</Text>
+        <Text>▶️ Fin descanso: {descansoFin}</Text>
         <Text>
           📍 Punto de inicio: ({latInicio}, {lonInicio})
         </Text>

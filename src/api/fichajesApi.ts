@@ -33,9 +33,22 @@ export const registrarFichajeSalida = async (
   return response.data;
 };
 
-// GET: Consultar estado de fichaje
+// PUT: Registrar descanso (inicio o fin) según estado actual
+export const registrarDescanso = async (
+  fichajeId: number,
+  latitud: number,
+  longitud: number
+) => {
+  const response = await api.put(`/worktrack/fichajes/descanso/${fichajeId}`, {
+    latitudFin: latitud,
+    longitudFin: longitud,
+  });
+  return response.data;
+};
+
+// GET: Estado del fichaje (entrada/salida)
 export const getFichajeEstado = async (usuarioId: number) => {
-  const token = await AsyncStorage.getItem("token"); // 👈 Asegúrate de que está guardado al hacer login
+  const token = await AsyncStorage.getItem("token");
   const res = await api.get(`/worktrack/fichajes/estado/${usuarioId}`, {
     headers: {
       Authorization: `Bearer ${token}`,

@@ -14,6 +14,7 @@ import {
 import MapView from "react-native-maps";
 import {
   getFichajeEstado,
+  registrarDescanso,
   registrarFichajeEntrada,
   registrarFichajeSalida,
 } from "../api/fichajesApi";
@@ -23,6 +24,9 @@ const HomeScreen = ({ navigation }: any) => {
     useState<Location.LocationObjectCoords | null>(null);
   const [fichando, setFichando] = useState(false);
   const [estado, setEstado] = useState("pendiente");
+  const [estadoDescanso, setEstadoDescanso] = useState("pendiente");
+  const [fichandoEntrada, setFichandoEntrada] = useState(false);
+  const [fichandoDescanso, setFichandoDescanso] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -61,8 +65,25 @@ const HomeScreen = ({ navigation }: any) => {
             return;
           }
 
-          const estado = await getFichajeEstado(usuarioId);
-          if (isActive) setEstado(estado);
+          const estadoObtenido = await getFichajeEstado(usuarioId);
+          console.log("📌 Estado fichaje backend:", estadoObtenido);
+
+          if (isActive) {
+            if (
+              !estadoObtenido ||
+              estadoObtenido === "" ||
+              estadoObtenido === "pendiente"
+            ) {
+              setEstado("pendiente");
+              await AsyncStorage.multiRemove([
+                "fichajeId",
+                "fichajeLat",
+                "fichajeLng",
+              ]);
+            } else {
+              setEstado("hecho");
+            }
+          }
         } catch (error: any) {
           console.error("❌ Error al obtener ubicación:", error);
 
@@ -93,8 +114,43 @@ const HomeScreen = ({ navigation }: any) => {
     }, [])
   );
 
+  const handleFicharDescanso = async () => {
+    setFichandoDescanso(true);
+
+    try {
+      const fichajeIdStr = await AsyncStorage.getItem("fichajeId");
+
+      if (!fichajeIdStr || !location) {
+        Alert.alert("Error", "Faltan datos para registrar el descanso");
+        setFichandoDescanso(false);
+        return;
+      }
+
+      const fichajeId = parseInt(fichajeIdStr, 10);
+
+      const actualizado = await registrarDescanso(
+        fichajeId,
+        location.latitude,
+        location.longitude
+      );
+
+      if (actualizado.enDescanso) {
+        setEstadoDescanso("Descansando...");
+        Alert.alert("Inicio de descanso registrado");
+      } else {
+        setEstadoDescanso("pendiente");
+        Alert.alert("Fin de descanso registrado");
+      }
+    } catch (error) {
+      console.error("Error al fichar descanso:", error);
+      Alert.alert("Error", "No se pudo registrar el descanso");
+    } finally {
+      setFichandoDescanso(false);
+    }
+  };
+
   const handleFichar = async () => {
-    setFichando(true);
+    setFichandoEntrada(true);
 
     try {
       const usuarioIdStr = await AsyncStorage.getItem("usuarioId");
@@ -103,7 +159,7 @@ const HomeScreen = ({ navigation }: any) => {
 
       if (!usuarioIdStr || !location) {
         Alert.alert("Error", "Faltan datos para registrar el fichaje");
-        setFichando(false);
+        setFichandoEntrada(true);
         return;
       }
 
@@ -121,13 +177,20 @@ const HomeScreen = ({ navigation }: any) => {
           location.latitude,
           location.longitude
         );
-        console.log("🛠️ Fichaje recibido:", nuevoFichaje);
-        if (!nuevoFichaje.id) {
+
+        console.log(
+          "🛠️ Fichaje recibido del backend:",
+          JSON.stringify(nuevoFichaje, null, 2)
+        );
+
+        if (!nuevoFichaje || !nuevoFichaje.id) {
           throw new Error("⚠️ Error: El fichaje devuelto no tiene ID");
         }
 
         console.log("🆕 Fichaje guardado con ID:", nuevoFichaje.id);
         await AsyncStorage.setItem("fichajeId", nuevoFichaje.id.toString());
+        console.log("🛠️ Fichaje recibido:", nuevoFichaje);
+        console.log(await AsyncStorage.getItem("fichajeId"));
         await AsyncStorage.setItem("fichajeLat", location.latitude.toString());
         await AsyncStorage.setItem("fichajeLng", location.longitude.toString());
         console.log("📝 Guardando datos entrada:");
@@ -196,7 +259,7 @@ const HomeScreen = ({ navigation }: any) => {
       console.error("❌ Error al fichar:", error);
       Alert.alert("Error", "No se pudo registrar el fichaje");
     } finally {
-      setFichando(false);
+      setFichandoEntrada(false);
     }
   };
 
@@ -223,12 +286,12 @@ const HomeScreen = ({ navigation }: any) => {
 
       <View style={styles.bottomContainer}>
         <TouchableOpacity
-          style={[styles.button, fichando && { opacity: 0.5 }]}
+          style={[styles.button]}
           onPress={handleFichar}
-          disabled={fichando}
+          disabled={fichandoEntrada || fichandoDescanso}
         >
           <Text style={styles.buttonText}>
-            {fichando
+            {fichandoEntrada
               ? "Fichando..."
               : estado === "pendiente"
               ? "Fichar Entrada"
@@ -240,10 +303,42 @@ const HomeScreen = ({ navigation }: any) => {
         <Text
           style={{
             color: estado === "hecho" ? "green" : "red",
+
             fontWeight: "bold",
           }}
         >
           {estado}
+        </Text>
+
+        <View style={{ height: 20 }} />
+
+        <TouchableOpacity
+          style={[styles.button]}
+          onPress={handleFicharDescanso}
+          disabled={fichandoDescanso}
+        >
+          <Text style={styles.buttonText}>
+            {fichandoDescanso
+              ? "Fichando..."
+              : estadoDescanso === "pendiente"
+              ? "Iniciar descanso"
+              : "Finalizar descanso"}
+          </Text>
+        </TouchableOpacity>
+
+        <Text style={styles.estadoLabel}>Estado Descanso</Text>
+        <Text
+          style={{
+            color:
+              estadoDescanso === "pendiente"
+                ? "red"
+                : estadoDescanso === "en_descanso"
+                ? "orange"
+                : "green",
+            fontWeight: "bold",
+          }}
+        >
+          {estadoDescanso}
         </Text>
       </View>
     </View>
@@ -272,21 +367,30 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   button: {
-    backgroundColor: "black",
     padding: 15,
     borderRadius: 15,
-    marginBottom: 20,
+    marginBottom: 20, // más separación
     width: "80%",
     alignItems: "center",
+    backgroundColor: "#007bff", // azul
   },
+
   buttonText: {
     color: "white",
     fontWeight: "bold",
-  },
-  estadoLabel: {
-    marginBottom: 5,
     fontSize: 16,
   },
+
+  buttonBlack: {
+    backgroundColor: "#000000",
+  },
+  estadoLabel: {
+    fontSize: 14,
+    marginTop: 5,
+    marginBottom: 5,
+    color: "#333",
+  },
+
   loadingContainer: {
     height: Dimensions.get("window").height * 0.45,
     justifyContent: "center",
@@ -295,6 +399,14 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 16,
     color: "#888",
+  },
+  buttonBlue: {
+    backgroundColor: "#007bff",
+    padding: 15,
+    borderRadius: 15,
+    marginBottom: 10,
+    width: "80%",
+    alignItems: "center",
   },
 });
 
