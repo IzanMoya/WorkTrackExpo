@@ -7,67 +7,61 @@ import api from "../api/axiosConfig";
 const HistorialScreen = ({ navigation }: any) => {
   const [fichajes, setFichajes] = useState<any[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [refreshing, setRefreshing] = useState(false); // 👈 NUEVO
+
+  const fetchData = async () => {
+    try {
+      setRefreshing(true); // 👈 NUEVO
+
+      const token = await AsyncStorage.getItem("token");
+      const usuarioIdStr = await AsyncStorage.getItem("usuarioId");
+      if (!token || !usuarioIdStr) {
+        Alert.alert("Error", "No se encontró sesión.");
+        navigation.navigate("Login");
+        return;
+      }
+
+      const resUsuario = await api.get(
+        `/worktrack/usuarios/${usuarioIdStr}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const usuario = resUsuario.data;
+
+      if (usuario.rol !== "admin") {
+        Alert.alert("Acceso denegado", "No tienes permisos para ver el historial.");
+        navigation.goBack();
+        return;
+      }
+
+      setIsAdmin(true);
+
+      const empresaId = usuario.empresa?.id;
+      if (!empresaId) {
+        Alert.alert("Error", "No se encontró la empresa del usuario.");
+        return;
+      }
+
+      const resFichajes = await api.get(
+        `/worktrack/fichajes/empresa/${empresaId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      const fichajesOrdenados = resFichajes.data.sort(
+        (a: any, b: any) =>
+          new Date(b.fechaInicio).getTime() -
+          new Date(a.fechaInicio).getTime()
+      );
+
+      setFichajes(fichajesOrdenados);
+    } catch (error) {
+      console.error("Error al obtener historial:", error);
+      Alert.alert("Error", "No se pudo cargar el historial.");
+    } finally {
+      setRefreshing(false); // 👈 NUEVO
+    }
+  };
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const token = await AsyncStorage.getItem("token");
-        const usuarioIdStr = await AsyncStorage.getItem("usuarioId");
-        if (!token || !usuarioIdStr) {
-          Alert.alert("Error", "No se encontró sesión.");
-          navigation.navigate("Login");
-          return;
-        }
-
-        // Obtener usuario completo
-        const resUsuario = await api.get(
-          `/worktrack/usuarios/${usuarioIdStr}`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-
-        const usuario = resUsuario.data;
-
-        if (usuario.rol !== "admin") {
-          Alert.alert(
-            "Acceso denegado",
-            "No tienes permisos para ver el historial."
-          );
-          navigation.goBack();
-          return;
-        }
-
-        setIsAdmin(true);
-
-        // Obtener fichajes filtrados por empresa
-        const empresaId = usuario.empresa?.id;
-        if (!empresaId) {
-          Alert.alert("Error", "No se encontró la empresa del usuario.");
-          return;
-        }
-
-        const resFichajes = await api.get(
-          `/worktrack/fichajes/empresa/${empresaId}`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-
-        // Ordenar los fichajes por fecha de entrada descendente
-        const fichajesOrdenados = resFichajes.data.sort(
-          (a: any, b: any) =>
-            new Date(b.fechaInicio).getTime() -
-            new Date(a.fechaInicio).getTime()
-        );
-
-        setFichajes(fichajesOrdenados);
-      } catch (error) {
-        console.error("Error al obtener historial:", error);
-        Alert.alert("Error", "No se pudo cargar el historial.");
-      }
-    };
-
     fetchData();
   }, []);
 
@@ -83,7 +77,6 @@ const HistorialScreen = ({ navigation }: any) => {
     const descansoInicio = item.fechaInicioDescanso
       ? moment(item.fechaInicioDescanso).format("DD/MM/YYYY HH:mm")
       : "Sin descanso";
-
     const descansoFin = item.fechaFinDescanso
       ? moment(item.fechaFinDescanso).format("DD/MM/YYYY HH:mm")
       : "Sin fin de descanso";
@@ -95,19 +88,15 @@ const HistorialScreen = ({ navigation }: any) => {
 
     return (
       <View style={styles.card}>
-        <Text
-          style={styles.employee}
-        >{`${item.usuarios.nombre} ${item.usuarios.apellidos}`}</Text>
+        <Text style={styles.employee}>
+          {`${item.usuarios.nombre} ${item.usuarios.apellidos}`}
+        </Text>
         <Text>📅 Entrada: {entrada}</Text>
         <Text>📅 Salida: {salida}</Text>
         <Text>⏸ Inicio descanso: {descansoInicio}</Text>
         <Text>▶️ Fin descanso: {descansoFin}</Text>
-        <Text>
-          📍 Punto de inicio: ({latInicio}, {lonInicio})
-        </Text>
-        <Text>
-          📍 Punto de fin: ({latFin}, {lonFin})
-        </Text>
+        <Text>📍 Punto de inicio: ({latInicio}, {lonInicio})</Text>
+        <Text>📍 Punto de fin: ({latFin}, {lonFin})</Text>
       </View>
     );
   };
@@ -120,6 +109,8 @@ const HistorialScreen = ({ navigation }: any) => {
         keyExtractor={(item) => item.id.toString()}
         renderItem={renderItem}
         ListEmptyComponent={<Text>No hay fichajes aún.</Text>}
+        refreshing={refreshing} // 👈 NUEVO
+        onRefresh={fetchData}   // 👈 NUEVO
       />
     </View>
   );
